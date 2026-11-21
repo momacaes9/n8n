@@ -18,6 +18,9 @@ What it fixes: 39,682 duplicate (code, date) rows removed; 5,435 non-numeric val
 3. Fill `time_series.description` from the Census code dictionary on the Kaggle page,
    otherwise the chatbot only sees codes like `44000_E_MPCSM_US`.
    Geography/adjusted/prefix are derived from the code and are a best guess.
+4. Create a read-only role for n8n: replace `REPLACE_ME` in `sql/04_readonly_user.sql`
+   with a strong password, run it, and use `n8n_reader` in the n8n credential so the
+   chatbot can only read data, never change it.
 
 ## 3. n8n AI agent
 - Add a **Postgres** credential (Supabase direct/pooler connection string) or use the Supabase node with the service_role key. Keep keys in n8n credentials, never in GitHub.
@@ -30,11 +33,13 @@ What it fixes: 39,682 duplicate (code, date) rows removed; 5,435 non-numeric val
   - `select * from series_latest where series_code = $1`
 - System prompt idea: "Always call search_series first to find the code, never guess values, say when a value is suppressed (value_flag)."
 
-## 4. GitHub
-```bash
-git init && git add . && git commit -m "Census time series to Supabase"
-git branch -M main
-git remote add origin https://github.com/<you>/<repo>.git
-git push -u origin main
-```
-`data/` is in `.gitignore` (regenerate it with the script). Never commit `.env` or database passwords.
+## Repo layout
+| Path | What it does |
+|------|--------------|
+| `scripts/clean_data.py` | Cleans the raw Kaggle CSV into the two load files |
+| `sql/01_schema.sql` | Tables, indexes and RLS |
+| `sql/02_load.sql` | Bulk loads the cleaned CSVs with `\copy` |
+| `sql/03_analytics.sql` | Helper functions the AI agent calls as tools |
+| `sql/04_readonly_user.sql` | Read-only `n8n_reader` role for the n8n credential |
+
+Never commit `.env`, database passwords or the real `n8n_reader` password.
